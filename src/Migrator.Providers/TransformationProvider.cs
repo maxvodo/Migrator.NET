@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Xml.Serialization;
 using Migrator.Framework;
 using Migrator.Framework.SchemaBuilder;
 using ForeignKeyConstraint = Migrator.Framework.ForeignKeyConstraint;
@@ -21,6 +22,200 @@ using Migrator.Framework.Loggers;
 
 namespace Migrator.Providers
 {
+
+  /// <summary>
+  /// 
+  /// </summary>
+  public sealed class TransformationProviderStore : ITransformationProviderStore
+  {
+    abstract class Tables
+    {
+      static public string SchemaInfo { get { return "SchemaInfo"; } }
+    }
+
+    abstract class Columns
+    {
+      static public string Version { get { return "Version"; } }
+      static public string Store { get { return "Store"; } }
+
+      public abstract class Constraints
+      {
+        public abstract class Store
+        {
+          public abstract class Current
+          {
+            static public DbType Type { get { return DbType.String; } }
+            static public int Size { get { return 8192; } }
+          }
+        }
+      }
+    }
+
+    public static readonly Column ColumnStore = new Column(
+      Columns.Store, 
+      Columns.Constraints.Store.Current.Type, 
+      Columns.Constraints.Store.Current.Size, 
+      ColumnProperty.NotNull, 
+      String.Empty
+    ); 
+
+    ITransformationProvider _provider;
+    long _currentVersion;
+    IDictionary<String, StoreValueHolder> _cachedData;
+
+    public TransformationProviderStore(ITransformationProvider provider, long currentVersion)
+    {
+      _provider = provider;
+      _currentVersion = currentVersion;
+
+      _checkColumnVersion();
+      _cachedData = _getData(_currentVersion);
+    }
+
+    void _checkColumnVersion()
+    {
+      if (!_provider.ColumnExists(Tables.SchemaInfo, Columns.Store))
+      {        
+        _provider.AddColumn(Tables.SchemaInfo, TransformationProviderStore.ColumnStore);
+        _provider.Logger.Log("Added column {0} to provide persistent migration data storing", Columns.Store);
+      }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public class StoreValueHolder
+    {
+      public StoreValueHolder() { }
+      protected StoreValueHolder(String value) { this.ValueHolder = value; }
+      public String ValueHolder { get; set; }
+
+      public static StoreValueHolder Factory<TValue>(TValue value)
+      {
+        using (System.IO.StringWriter textWriter = new System.IO.StringWriter())
+        {
+          XmlSerializerFactory xmlSerializerfactory = new XmlSerializerFactory();
+          XmlSerializer xmlSerializer = xmlSerializerfactory.CreateSerializer(typeof(TValue));
+          if (xmlSerializer == null) throw new System.Xml.XmlException("Factory", new ArgumentNullException("xmlSerializer"));
+          xmlSerializer.Serialize(textWriter, value);
+          return new StoreValueHolder(textWriter.ToString());
+        }
+      }
+
+      public static TValue DeFactory<TValue>(String value, ITransformationProvider provider)
+      {
+        using (System.IO.StringReader textReader = new System.IO.StringReader(value.ToString()))
+        {
+          XmlSerializerFactory xmlSerializerfactory = new XmlSerializerFactory();
+          XmlSerializer xmlSerializer = xmlSerializerfactory.CreateSerializer(typeof(TValue));
+          if (xmlSerializer == null) throw new System.Xml.XmlException("DeFactory", new ArgumentNullException("xmlSerializer"));
+          var desializedData = xmlSerializer.Deserialize(textReader);
+          
+          if (desializedData is IAfterSerializeLoadable) ((IAfterSerializeLoadable)desializedData).SetProvider(provider);
+
+          return (TValue)desializedData;
+        }
+      }
+    }
+
+    public class KeyValuePair<K, V>
+    {
+      public KeyValuePair() { }
+      public KeyValuePair(K key, V value) { this.Key = key; this.Value = value; }
+      public K Key { get; set; }
+      public V Value { get; set; }
+    }
+
+    void _storeData(long version, IDictionary<String, StoreValueHolder> data)
+    {
+      if (data.Count == 0) return;
+
+      List<KeyValuePair<String, StoreValueHolder>> _listPairs = new List<KeyValuePair<String, StoreValueHolder>>();
+      foreach (string key in data.Keys) _listPairs.Add(new KeyValuePair<String, StoreValueHolder>(key, data[key]));
+
+      using (System.IO.StringWriter textWriter = new System.IO.StringWriter())
+      {
+        XmlSerializerFactory xmlSerializerfactory = new XmlSerializerFactory();
+        XmlSerializer xmlSerializer = xmlSerializerfactory.CreateSerializer(typeof(List<KeyValuePair<String, StoreValueHolder>>), new Type[] { typeof(KeyValuePair<String, StoreValueHolder>), typeof(StoreValueHolder) });
+        if (xmlSerializer == null) throw new System.Xml.XmlException("_storeData", new ArgumentNullException("xmlSerializer"));
+        xmlSerializer.Serialize(textWriter, _listPairs);
+        _provider.Update(Tables.SchemaInfo, new string[] { Columns.Store }, new string[] { textWriter.ToString() }, String.Format("version={0}", version));
+      }
+    }
+
+    IDictionary<String, StoreValueHolder> _getData(long version)
+    {
+      IDictionary<String, StoreValueHolder> data = new Dictionary<String, StoreValueHolder>();
+      object dataRaw = null;
+
+      using (IDbCommand readTextCommand = _provider.GetCommand())
+      {
+        readTextCommand.CommandText = String.Format(
+          @"DECLARE @ptrval varbinary(16)
+            SELECT @ptrval = TEXTPTR(SchemaInfo.Store) FROM SchemaInfo WHERE version={0}
+            IF @ptrval IS NOT NULL READTEXT SchemaInfo.Store @ptrval 0 0"
+        , version);
+        dataRaw = readTextCommand.ExecuteScalar();
+      }      
+
+      if (null != dataRaw)
+      {                
+        if (!String.IsNullOrEmpty(dataRaw.ToString()))
+        {          
+          using (System.IO.StringReader textReader = new System.IO.StringReader(dataRaw.ToString()))
+          {
+            XmlSerializerFactory xmlSerializerfactory = new XmlSerializerFactory();
+            XmlSerializer xmlSerializer = xmlSerializerfactory.CreateSerializer(typeof(List<KeyValuePair<String, StoreValueHolder>>), new Type[] { typeof(KeyValuePair<String, StoreValueHolder>), typeof(StoreValueHolder) });
+            if (xmlSerializer == null) throw new System.Xml.XmlException("_storeData", new ArgumentNullException("xmlSerializer"));
+            var desializedData = xmlSerializer.Deserialize(textReader);
+
+            IList<KeyValuePair<String, StoreValueHolder>> _listPairs = desializedData as IList<KeyValuePair<String, StoreValueHolder>>;
+            foreach (KeyValuePair<String, StoreValueHolder> vpair in _listPairs) data[vpair.Key] = vpair.Value;
+          }
+        }
+        else this._provider.Logger.Warn("Empty get xml for migration: {0}", version);
+      }
+
+      return data;
+    }
+
+    #region ITransformationProviderStore Members
+
+    public void Set<TValue>(string key, TValue value)
+    {
+      _cachedData[key] = StoreValueHolder.Factory<TValue>(value);
+    }
+
+    public bool IsSet(string key)
+    {
+      return _cachedData.ContainsKey(key);
+    }
+
+    public TValue Get<TValue>(string key, TValue defaultValue)
+    {
+      var valueRaw = _cachedData.ContainsKey(key) ? _cachedData[key] : null;
+      return (valueRaw == null || (valueRaw.ValueHolder == null)) ? defaultValue : StoreValueHolder.DeFactory<TValue>(valueRaw.ValueHolder, _provider);
+    }
+
+    public TValue Get<TValue>(string key)
+    {
+      if (!_cachedData.ContainsKey(key)) throw new IndexOutOfRangeException(key);
+      return Get<TValue>(key, default(TValue));
+    }    
+
+    public void Unset(string key)
+    {
+      if (this.IsSet(key)) _cachedData.Remove(key);
+    }
+
+    #endregion
+
+    public void Commit()
+    {
+      _storeData(_currentVersion, _cachedData);
+    }
+  }
+
 	/// <summary>
 	/// Base class for every transformation providers.
 	/// A 'tranformation' is an operation that modifies the database.
@@ -789,7 +984,10 @@ namespace Migrator.Providers
 			EnsureHasConnection();
 			if (!TableExists("SchemaInfo"))
 			{
-				AddTable("SchemaInfo", new Column("Version", DbType.Int64, ColumnProperty.PrimaryKey));
+                            AddTable("SchemaInfo", new Column[] { 
+                              new Column("Version", DbType.Int64, ColumnProperty.PrimaryKey),
+                              TransformationProviderStore.ColumnStore
+                            });
 			}
 		}
 

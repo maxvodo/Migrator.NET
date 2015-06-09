@@ -45,5 +45,10 @@ namespace Migrator.Framework
         /// This gets called once on the first migration object.
         /// </summary>
         void InitializeOnce(string[] args);
+
+        /// <summary>
+        /// Using for store and share some user data between migrations
+        /// </summary>
+        ITransformationProviderStore Store { get; set; }
     }
 }

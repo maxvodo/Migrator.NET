@@ -11,10 +11,19 @@
 
 #endregion
 
+using System;
 using System.Data;
 
 namespace Migrator.Framework
 {
+        /// <summary>
+        /// 
+        /// </summary>
+        public interface IAfterSerializeLoadable
+        {
+          void SetProvider(ITransformationProvider provider);
+        }
+
 	public interface IColumn
 	{
 		ColumnProperty ColumnProperty { get; set; }

@@ -3,7 +3,21 @@ using System.Data;
 using System.Collections.Generic;
 
 namespace Migrator.Framework
-{   
+{
+    
+    /// <summary>
+    /// 
+    /// </summary>
+    public interface ITransformationProviderStore
+    {
+      bool IsSet(string key);
+      void Set<TValue>(String key, TValue value);
+      TValue Get<TValue>(String key);
+      TValue Get<TValue>(String key, TValue defaultValue);
+      void Unset(String key);
+      void Commit();
+    }
+
     /// <summary>
     /// The main interface to use in Migrations to make changes on a database schema.
     /// </summary>

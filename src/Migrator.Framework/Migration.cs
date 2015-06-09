@@ -132,5 +132,10 @@ namespace Migrator.Framework
         public virtual void InitializeOnce(string[] args)
         {
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public ITransformationProviderStore Store { get; set; }
     }
 }

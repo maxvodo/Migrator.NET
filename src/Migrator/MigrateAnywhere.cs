@@ -76,8 +76,10 @@ namespace Migrator
             _logger.MigrateUp(Current, migration.Name);
             if(! DryRun)
             {
+                migration.Store = new Providers.TransformationProviderStore(migration.Database, migration.Version);
                 migration.Up();
                 _provider.MigrationApplied(migration.Version);
+                migration.Store.Commit();
                 _provider.Commit();
                 migration.AfterUp();
             }
@@ -90,8 +92,10 @@ namespace Migrator
             _logger.MigrateDown(Current, migration.Name);
             if (! DryRun)
             {
+                migration.Store = new Providers.TransformationProviderStore(migration.Database, migration.Version);
                 migration.Down();
                 _provider.MigrationUnApplied(migration.Version);
+                migration.Store.Commit();
                 _provider.Commit();
                 migration.AfterDown();
             }
