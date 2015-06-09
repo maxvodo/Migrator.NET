@@ -149,6 +149,8 @@ namespace Migrator
 
                 try
                 {
+                    migration.Previous = migrate.Previous;
+
                     if (firstRun)
                     {
                         migration.InitializeOnce(_args);

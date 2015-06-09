@@ -23,6 +23,12 @@ namespace Migrator.Providers
             get { return null; }
             set { }
         }
+
+        public IMigration CurrentMigration
+        {
+          get { return null; }
+          set { }
+        }
         
         public Dialect Dialect
         {

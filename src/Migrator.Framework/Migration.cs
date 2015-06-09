@@ -11,6 +11,9 @@
 
 #endregion
 
+using System;
+using System.Reflection;
+
 namespace Migrator.Framework
 {
     /// <summary>
@@ -68,11 +71,25 @@ namespace Migrator.Framework
     public abstract class Migration : IMigration
     {
         private ITransformationProvider _transformationProvider;
+        private MigrationAttribute _attr;
+
+        public Migration()
+        {
+          this._attr = (MigrationAttribute)Attribute.GetCustomAttribute(this.GetType(), typeof(MigrationAttribute));
+          if (this._attr == null) throw new ArgumentNullException("MigrationAttribute");
+        }
 
         public string Name
         {
             get { return StringUtils.ToHumanName(GetType().Name); }
         }
+
+        public long Version
+        {
+          get { return this._attr.Version; }
+        }
+
+        public long Previous { get; set; }
 
         /// <summary>
         /// Defines tranformations to port the database to the current version.

@@ -61,36 +61,37 @@ namespace Migrator
         public override void Migrate(IMigration migration)
         {
             _provider.BeginTransaction();
-            MigrationAttribute attr = (MigrationAttribute)Attribute.GetCustomAttribute(migration.GetType(), typeof(MigrationAttribute));
             
-            if (_provider.AppliedMigrations.Contains(attr.Version)) {
-            	RemoveMigration(migration, attr);
+            if (_provider.AppliedMigrations.Contains(migration.Version)) {
+            	RemoveMigration(migration);
             } else {
-            	ApplyMigration(migration, attr);
+            	ApplyMigration(migration);
             }
         }
 
-        private void ApplyMigration(IMigration migration, MigrationAttribute attr)
+        private void ApplyMigration(IMigration migration)
         {
             // we're adding this one
+            _provider.CurrentMigration = migration;
             _logger.MigrateUp(Current, migration.Name);
             if(! DryRun)
             {
                 migration.Up();
-                _provider.MigrationApplied(attr.Version);
+                _provider.MigrationApplied(migration.Version);
                 _provider.Commit();
                 migration.AfterUp();
             }
         }
 
-        private void RemoveMigration(IMigration migration, MigrationAttribute attr)
+        private void RemoveMigration(IMigration migration)
         {
             // we're removing this one
+            _provider.CurrentMigration = migration;
             _logger.MigrateDown(Current, migration.Name);
             if (! DryRun)
             {
                 migration.Down();
-                _provider.MigrationUnApplied(attr.Version);
+                _provider.MigrationUnApplied(migration.Version);
                 _provider.Commit();
                 migration.AfterDown();
             }

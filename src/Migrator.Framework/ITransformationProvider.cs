@@ -19,8 +19,13 @@ namespace Migrator.Framework
         /// The list of Migrations currently applied to the database.
         /// </summary>
         List<long> AppliedMigrations { get; }
-        
+
         ILogger Logger { get; set; }
+
+        /// <summary>
+        /// Provide access to migration instance of up or down methods moment
+        /// </summary>
+        IMigration CurrentMigration { get; set; }
 
         /// <summary>
         /// Add a column to an existing table

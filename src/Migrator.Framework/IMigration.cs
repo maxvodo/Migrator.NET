@@ -7,6 +7,16 @@ namespace Migrator.Framework
         /// <summary>
         /// Represents the database.
         /// <see cref="ITransformationProvider"></see>.
+        long Version { get; }
+
+        /// <summary>
+        /// Version of previous migration
+        /// </summary>
+        long Previous { get; set; }
+
+        /// <summary>
+        /// Represents the database.
+        /// <see cref="ITransformationProvider"></see>.
         /// </summary>
         /// <seealso cref="ITransformationProvider">Migration.Framework.ITransformationProvider</seealso>
         ITransformationProvider Database { get; set; }
