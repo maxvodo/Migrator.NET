@@ -116,4 +116,31 @@ namespace Migrator.Providers
             return (source & comparison) == comparison;
         }
     }
+
+    public class IndexPropertiesMapper
+    {
+      protected Dialect dialect;
+
+      /// <summary>The SQL type</summary>
+      protected string type;
+
+      protected ColumnSortOrderProperty sortOrder;
+
+      public IndexPropertiesMapper(Dialect dialect, ColumnPropertiesMapper columnPropertiesMapper, ColumnSortOrderProperty sortOrder)
+      {
+        this.dialect = dialect;
+        this.sortOrder = sortOrder;
+        this.Name = columnPropertiesMapper.Name;
+      }
+
+      public string Name { get; set; }
+
+      public string IndexSql
+      {
+        get
+        {
+          return String.Format("{0} {1}", this.dialect.Quote(this.Name), (this.sortOrder == ColumnSortOrderProperty.Asc) ? "ASC" : "DESC");
+        }
+      }
+    }
 }

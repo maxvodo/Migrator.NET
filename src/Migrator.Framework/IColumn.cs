@@ -39,5 +39,56 @@ namespace Migrator.Framework
 		bool IsPrimaryKey { get; }
 
 		object DefaultValue { get; set; }
-	}
+	}  
+
+        [Flags]
+        public enum DataCompression
+        {
+          None = 0,
+
+          Row = 1,
+
+          Page = 2
+        }
+
+        public interface IRelationalOptions
+        {
+          bool PAD_INDEX { get; set; }
+          int FILLFACTOR { get; set; }
+          bool SORT_IN_TEMPDB { get; set; }
+          bool IGNORE_DUP_KEY { get; set; }
+          bool STATISTICS_NORECOMPUTE { get; set; }
+          bool STATISTICS_INCREMENTAL { get; set; }
+          bool DROP_EXISTING { get; set; }
+          bool ONLINE { get; set; }    
+          bool DATA_COMPRESSION { get; set; }
+        }
+
+        public interface ISortedColumn : IColumn
+        {
+          ColumnSortOrderProperty SortOrder { get; set; }
+        }
+
+        public interface IIndex : IAfterSerializeLoadable
+        {
+          IndexProperty IndexProperty { get; set; }
+
+          string Table { get; }
+
+          string Name { get; set; }
+
+          bool IsClustered { get; }
+
+          bool IsNonClustered { get; }
+
+          bool IsUnique { get; }
+
+          ISortedColumn[] Columns { get; }
+
+          IRelationalOptions RelationalOption { get; }
+
+          bool IgnoreDuplicateKey { set; get; }
+
+          bool DropExistingIndex { set; get; }
+        }
 }

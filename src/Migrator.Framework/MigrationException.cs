@@ -27,4 +27,37 @@ namespace Migrator.Framework
 		public MigrationException(string migration, int version, Exception innerException)
 			: base(String.Format("Exception in migration {0} (#{1})", migration, version), innerException) {}
 	}
-}
+
+        /// <summary>
+        /// Table not found exception.
+        /// </summary>
+        public sealed class TableNotFoundException : MigrationException
+        {
+          public TableNotFoundException(string table) : base(string.Format("Table '{0}' doesn't exist", table)) { }
+        }
+
+        /// <summary>
+        /// Column not found exception.
+        /// </summary>
+        public sealed class ColumnNotFoundException : MigrationException
+        {
+          public ColumnNotFoundException(string column, string table) : base(string.Format("Column '{0}' doesn't exist in '{1}' table", column, table)) { }
+        }
+
+        /// <summary>
+        /// View not found exception.
+        /// </summary>
+        public sealed class ViewNotFoundException : MigrationException
+        {
+          public ViewNotFoundException(string view) : base(string.Format("View '{0}' doesn't exist", view)) { }
+        }
+
+        /// <summary>
+        /// View not found exception.
+        /// </summary>
+        public sealed class IndexNotFoundException : MigrationException
+        {
+          public IndexNotFoundException(string index) : base(string.Format("Index '{0}' doesn't exist", index)) { }
+          public IndexNotFoundException(string index, string table) : base(string.Format("Index '{0}' doesn't exist in '{1}' table", index, table)) { }
+        }
+      }

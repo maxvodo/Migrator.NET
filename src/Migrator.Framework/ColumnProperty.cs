@@ -47,4 +47,34 @@ namespace Migrator.Framework
         /// </summary>
         PrimaryKeyWithIdentity = PrimaryKey | Identity
     }
+
+    /// <summary>
+    /// Represents a table column properties.
+    /// </summary>
+    [Flags]
+    public enum IndexProperty
+    {
+      None = 0,
+
+      Clustered = 1,
+
+      NonClustered = 2,
+
+      Unique = 4,
+
+      PrimaryKey = 8 | Unique
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    [Flags]
+    public enum ColumnSortOrderProperty
+    {
+      Default = 0,
+
+      Asc = Default,
+
+      Desc = 1
+    }
 }
